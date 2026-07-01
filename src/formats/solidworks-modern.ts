@@ -1,7 +1,8 @@
 import { inflateSync } from 'fflate'
 import type { ExtractContext, FormatExtractor, Preview } from '../types'
 import { indexOfSeq } from '../util/bytes'
-import { dibToBmp, imageSig } from '../util/image'
+import { dibToPng } from '../util/dib'
+import { imageSig } from '../util/image'
 
 // Fixed magic that tags a stream record in the modern SolidWorks container.
 const SW_STREAM_MAGIC = Uint8Array.from([0x27, 0x56, 0x67, 0x96, 0x56, 0x77])
@@ -44,11 +45,11 @@ export const solidworksModernExtractor: FormatExtractor = {
         }
         const format = imageSig(out)
         if (format) return { data: out, format, source: 'solidworks-modern' }
-        if (!dibFallback) dibFallback = dibToBmp(out)
+        if (!dibFallback) dibFallback = dibToPng(out)
       }
     }
     if (dibFallback) {
-      return { data: dibFallback, format: 'bmp', source: 'solidworks-modern' }
+      return { data: dibFallback, format: 'png', source: 'solidworks-modern' }
     }
     return null
   },

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as CFB from 'cfb'
-import { deflateSync, zipSync } from 'fflate'
-import { dibToBmp, extractPreview, registerExtractor } from '../src/index'
+import { deflateSync, zipSync, zlibSync } from 'fflate'
+import { dibToPng, extractPreview, registerExtractor } from '../src/index'
 
 /** A byte blob that begins with the PNG signature (enough for content sniffing). */
 function fakePng(size = 64): Uint8Array {
@@ -31,6 +31,40 @@ function fakeDib(withLenPrefix: boolean): Uint8Array {
   const out = new Uint8Array(4 + dib.length)
   new DataView(out.buffer).setUint32(0, dib.length, true)
   out.set(dib, 4)
+  return out
+}
+
+/** Build a Rhino-3DM-shaped buffer: banner + BITMAPINFOHEADER + zlib'd pixels. */
+function fakeRhino(): Uint8Array {
+  const w = 8
+  const h = 8
+  const bpp = 24
+  const stride = (((w * bpp + 31) >> 5) << 2) >>> 0
+  const need = stride * h
+  const pixels = new Uint8Array(need)
+  for (let i = 0; i < need; i++) pixels[i] = (i * 7) & 0xff
+  const dibHeader = new Uint8Array(40)
+  const dv = new DataView(dibHeader.buffer)
+  dv.setUint32(0, 40, true)
+  dv.setInt32(4, w, true)
+  dv.setInt32(8, h, true)
+  dv.setUint16(12, 1, true)
+  dv.setUint16(14, bpp, true)
+  dv.setUint32(16, 0, true) // BI_RGB header (pixels are stored zlib-compressed)
+  const banner = new Uint8Array(32)
+  banner.set(
+    '3D Geometry File Format '.split('').map((c) => c.charCodeAt(0)),
+  )
+  const wrapper = Uint8Array.from([0, 0, 0, 0, 1, 0, 0, 0]) // openNURBS-ish gap
+  const zlibbed = zlibSync(pixels)
+  const out = new Uint8Array(
+    banner.length + dibHeader.length + wrapper.length + zlibbed.length,
+  )
+  let p = 0
+  for (const part of [banner, dibHeader, wrapper, zlibbed]) {
+    out.set(part, p)
+    p += part.length
+  }
   return out
 }
 
@@ -119,12 +153,13 @@ describe('extractPreview', () => {
     expect(preview!.source).toBe('ole')
   })
 
-  test('OLE with only a headerless-DIB Preview stream', () => {
+  test('OLE with only a headerless-DIB Preview stream (decoded to PNG)', () => {
     const ole = fakeOle({ Preview: fakeDib(true) })
     const preview = extractPreview(ole, { filename: 'legacy.sldprt' })
     expect(preview).not.toBeNull()
-    expect(preview!.format).toBe('bmp')
+    expect(preview!.format).toBe('png')
     expect(preview!.source).toBe('ole')
+    expect(preview!.data[0]).toBe(0x89) // PNG signature
   })
 
   test('OLE with a PNG embedded mid-stream (Inventor-style)', () => {
@@ -149,6 +184,14 @@ describe('extractPreview', () => {
       'data.bin': new Uint8Array([1, 2, 3]),
     })
     expect(extractPreview(zip, { filename: 'design.f3d' })?.source).toBe('zip')
+  })
+
+  test('Rhino .3dm (zlib-compressed DIB preview)', () => {
+    const preview = extractPreview(fakeRhino(), { filename: 'model.3dm' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('rhino')
+    expect(preview!.data[0]).toBe(0x89) // decoded to PNG
   })
 
   test('a bare DIB header with no pixel data is not mistaken for an image', () => {
@@ -189,15 +232,17 @@ describe('extractPreview', () => {
   })
 })
 
-describe('dibToBmp', () => {
-  test('wraps a bare DIB into a decodable BMP', () => {
-    const bmp = dibToBmp(fakeDib(false))
-    expect(bmp).not.toBeNull()
-    expect(bmp![0]).toBe(0x42) // 'B'
-    expect(bmp![1]).toBe(0x4d) // 'M'
+describe('dibToPng', () => {
+  test('decodes a bare DIB into a PNG', () => {
+    const png = dibToPng(fakeDib(false))
+    expect(png).not.toBeNull()
+    // PNG signature
+    expect(Array.from(png!.subarray(0, 8))).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ])
   })
 
   test('rejects non-DIB bytes', () => {
-    expect(dibToBmp(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]))).toBeNull()
+    expect(dibToPng(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]))).toBeNull()
   })
 })

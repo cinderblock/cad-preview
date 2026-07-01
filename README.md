@@ -33,7 +33,12 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **SolidWorks (modern, ~2015+)** | `.sldprt` `.sldasm` `.slddrw` | Proprietary binary container; a 640×480 PNG stored as a raw-DEFLATE stream. Reverse-engineered — see below. |
 | **SolidWorks (legacy, ≤2014)** | `.sldprt` `.sldasm` `.slddrw` | OLE compound document with a `PreviewPNG` stream or a headerless DIB `Preview` stream. |
 | **Autodesk Inventor** | `.ipt` `.iam` | OLE compound document with a PNG embedded inside a stream. |
+| **Rhino 3DM** | `.3dm` | openNURBS preview chunk — a Windows DIB whose pixels are zlib-compressed (or, rarely, uncompressed). |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
+
+Previews stored as a Windows DIB (Rhino, some SolidWorks/Solid Edge) are
+transcoded to **PNG** on the way out, so every result is a browser- and
+libvips/sharp-decodable image (never a raw BMP). `Preview.format` tells you which.
 
 Not every file contains a preview — e.g. a SolidWorks file saved with "save
 preview graphics" off, or a raw geometry format (STL/STEP/OBJ/IGES) — in which
@@ -43,11 +48,10 @@ case `extractPreview` returns `null`.
 
 Formats that embed a preview and are candidates for future extractors (help
 welcome): **AutoCAD DWG** (header preview pointer → BMP/PNG), **DXF**
-(`THUMBNAILIMAGE` section → DIB), **Rhino 3DM** (openNURBS `TCODE_PREVIEWIMAGE`
-chunk, often zlib-compressed), **SketchUp SKP**, **Blender `.blend`** (thumbnail
-block), and **Solid Edge** (`.par`/`.psm`/`.asm`, OLE property-set DIB). Raw
-geometry formats (STL, STEP, OBJ, IGES) embed no raster and need an actual 3D
-render instead.
+(`THUMBNAILIMAGE` section → DIB), **SketchUp SKP**, **Blender `.blend`**
+(thumbnail block), and **Solid Edge** (`.par`/`.psm`/`.asm`, OLE property-set
+DIB). Raw geometry formats (STL, STEP, OBJ, IGES) embed no raster and need an
+actual 3D render instead.
 
 ## Why this exists
 

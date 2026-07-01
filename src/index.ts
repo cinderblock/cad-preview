@@ -8,7 +8,8 @@ export type {
   Preview,
 } from './types'
 export { builtinExtractors, registerExtractor } from './registry'
-export { imageSig, dibToBmp } from './util/image'
+export { imageSig, findEmbeddedImage } from './util/image'
+export { dibToPng } from './util/dib'
 
 /** Options for {@link extractPreview}. */
 export interface ExtractOptions {

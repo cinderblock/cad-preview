@@ -1,7 +1,8 @@
 import * as CFB from 'cfb'
 import type { FormatExtractor, ImageFormat, Preview } from '../types'
 import { toU8 } from '../util/bytes'
-import { dibToBmp, findEmbeddedImage, imageSig } from '../util/image'
+import { dibToPng } from '../util/dib'
+import { findEmbeddedImage, imageSig } from '../util/image'
 
 /**
  * OLE2 compound documents: older SolidWorks (.sldprt/.sldasm/.slddrw, ≤2014),
@@ -9,7 +10,7 @@ import { dibToBmp, findEmbeddedImage, imageSig } from '../util/image'
  * files. The preview shows up in a few shapes:
  *
  *   - A stream that *is* an image — a PNG ("PreviewPNG") or a headerless DIB in a
- *     "Preview" stream (no BM/PNG magic, so we wrap it via dibToBmp).
+ *     "Preview" stream (no BM/PNG magic, so we decode it via dibToPng).
  *   - An image embedded *inside* a stream at a non-zero offset — Inventor stores
  *     its PNG partway into an obfuscated-name stream; OLE property-set thumbnails
  *     carry a DIB. findEmbeddedImage locates those.
@@ -43,8 +44,8 @@ export const oleExtractor: FormatExtractor = {
       if (wholeFmt) {
         found = { data: raw, format: wholeFmt }
       } else {
-        const bmp = dibToBmp(raw)
-        if (bmp) found = { data: bmp, format: 'bmp' }
+        const png = dibToPng(raw)
+        if (png) found = { data: png, format: 'png' }
         else found = findEmbeddedImage(raw)
       }
       if (!found) return
