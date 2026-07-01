@@ -34,6 +34,24 @@ function fakeDib(withLenPrefix: boolean): Uint8Array {
   return out
 }
 
+/** Build a .blend-shaped buffer: 12-byte header + a "TEST" thumbnail block. */
+function fakeBlend(): Uint8Array {
+  const w = 4
+  const h = 4
+  const size = 8 + w * h * 4
+  const header = 24 // code(4)+size(4)+ptr(8)+sdna(4)+count(4), 64-bit build
+  const out = new Uint8Array(12 + header + size)
+  const dv = new DataView(out.buffer)
+  out.set('BLENDER-v280'.split('').map((c) => c.charCodeAt(0))) // ptr '-'=8, 'v'=LE
+  out.set('TEST'.split('').map((c) => c.charCodeAt(0)), 12)
+  dv.setInt32(16, size, true)
+  const data = 12 + header
+  dv.setInt32(data, w, true)
+  dv.setInt32(data + 4, h, true)
+  for (let i = 0; i < w * h * 4; i++) out[data + 8 + i] = (i * 5) & 0xff
+  return out
+}
+
 /** Build a Rhino-3DM-shaped buffer: banner + BITMAPINFOHEADER + zlib'd pixels. */
 function fakeRhino(): Uint8Array {
   const w = 8
@@ -208,6 +226,14 @@ describe('extractPreview', () => {
       'data.bin': new Uint8Array([1, 2, 3]),
     })
     expect(extractPreview(zip, { filename: 'design.f3d' })?.source).toBe('zip')
+  })
+
+  test('Blender .blend (TEST thumbnail block → RGBA PNG)', () => {
+    const preview = extractPreview(fakeBlend(), { filename: 'scene.blend' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('blender')
+    expect(preview!.data[0]).toBe(0x89)
   })
 
   test('AutoCAD DWG (preview section → DIB entry, decoded to PNG)', () => {
