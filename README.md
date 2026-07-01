@@ -35,6 +35,7 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **Autodesk Inventor** | `.ipt` `.iam` | OLE compound document with a PNG embedded inside a stream. |
 | **Rhino 3DM** | `.3dm` | openNURBS preview chunk — a Windows DIB whose pixels are zlib-compressed (or, rarely, uncompressed). |
 | **AutoCAD DWG** | `.dwg` | Preview-image section (header pointer → sentinel → entry table); a headerless DIB (R13–R2010) or PNG (R2013+). |
+| **AutoCAD DXF** | `.dxf` | Optional `THUMBNAILIMAGE` section; a Windows DIB hex-encoded across group-code 310 lines. |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
 Previews stored as a Windows DIB (Rhino, some SolidWorks/Solid Edge) are
@@ -48,10 +49,9 @@ case `extractPreview` returns `null`.
 ### Roadmap
 
 Formats that embed a preview and are candidates for future extractors (help
-welcome): **DXF** (`THUMBNAILIMAGE` section → DIB), **SketchUp SKP**, **Blender
-`.blend`** (thumbnail block), and **Solid Edge** (`.par`/`.psm`/`.asm`, OLE
-property-set DIB). Raw geometry formats (STL, STEP, OBJ, IGES) embed no raster
-and need an actual 3D render instead.
+welcome): **SketchUp SKP**, **Blender `.blend`** (thumbnail block), and **Solid
+Edge** (`.par`/`.psm`/`.asm`, OLE property-set DIB). Raw geometry formats (STL,
+STEP, OBJ, IGES) embed no raster and need an actual 3D render instead.
 
 ## Why this exists
 

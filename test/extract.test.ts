@@ -218,6 +218,32 @@ describe('extractPreview', () => {
     expect(preview!.data[0]).toBe(0x89)
   })
 
+  test('AutoCAD DXF (THUMBNAILIMAGE section → hex DIB, decoded to PNG)', () => {
+    const dib = fakeDib(false)
+    const hex = Array.from(dib)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+    let dxf = '  0\nSECTION\n  2\nTHUMBNAILIMAGE\n 90\n' + dib.length + '\n'
+    for (let i = 0; i < hex.length; i += 254) {
+      dxf += '310\n' + hex.slice(i, i + 254) + '\n'
+    }
+    dxf += '  0\nENDSEC\n  0\nEOF\n'
+    const preview = extractPreview(new TextEncoder().encode(dxf), {
+      filename: 'drawing.dxf',
+    })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('dxf')
+  })
+
+  test('DXF without a THUMBNAILIMAGE section returns null', () => {
+    const dxf = '  0\nSECTION\n  2\nHEADER\n  0\nENDSEC\n  0\nEOF\n'
+    expect(
+      extractPreview(new TextEncoder().encode(dxf), { filename: 'plain.dxf' }),
+    ).toBeNull()
+  })
+
   test('Rhino .3dm (zlib-compressed DIB preview)', () => {
     const preview = extractPreview(fakeRhino(), { filename: 'model.3dm' })
     expect(preview).not.toBeNull()
