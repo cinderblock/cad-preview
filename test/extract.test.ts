@@ -228,6 +228,21 @@ describe('extractPreview', () => {
     expect(extractPreview(zip, { filename: 'design.f3d' })?.source).toBe('zip')
   })
 
+  test('SketchUp .skp (first embedded PNG after the header)', () => {
+    const png = fakePng(120)
+    const magic = [
+      0xff, 0xfe, 0xff, 0x0e, 0x53, 0x00, 0x6b, 0x00, 0x65, 0x00, 0x74, 0x00,
+      0x63, 0x00, 0x68, 0x00, 0x55, 0x00, 0x70, 0x00,
+    ]
+    const skp = new Uint8Array(magic.length + 16 + png.length)
+    skp.set(magic)
+    skp.set(png, magic.length + 16) // some header bytes, then the thumbnail PNG
+    const preview = extractPreview(skp, { filename: 'model.skp' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('sketchup')
+  })
+
   test('Blender .blend (TEST thumbnail block → RGBA PNG)', () => {
     const preview = extractPreview(fakeBlend(), { filename: 'scene.blend' })
     expect(preview).not.toBeNull()

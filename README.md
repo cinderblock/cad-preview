@@ -37,6 +37,7 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **AutoCAD DWG** | `.dwg` | Preview-image section (header pointer → sentinel → entry table); a headerless DIB (R13–R2010) or PNG (R2013+). |
 | **AutoCAD DXF** | `.dxf` | Optional `THUMBNAILIMAGE` section; a Windows DIB hex-encoded across group-code 310 lines. |
 | **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail (uncompressed files). |
+| **SketchUp** | `.skp` | Version header immediately followed by the thumbnail as an embedded PNG. |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
 Previews stored as a Windows DIB (Rhino, some SolidWorks/Solid Edge) are
@@ -50,10 +51,9 @@ case `extractPreview` returns `null`.
 ### Roadmap
 
 Formats that embed a preview and are candidates for future extractors (help
-welcome): **SketchUp SKP**, **Solid Edge** (`.par`/`.psm`/`.asm`, OLE
-property-set DIB), and **compressed `.blend`** (gzip/zstd-wrapped). Raw geometry
-formats (STL, STEP, OBJ, IGES) embed no raster and need an actual 3D render
-instead.
+welcome): **Solid Edge** (`.par`/`.psm`/`.asm`, OLE property-set DIB) and
+**compressed `.blend`** (gzip/zstd-wrapped). Raw geometry formats (STL, STEP,
+OBJ, IGES) embed no raster and need an actual 3D render instead.
 
 ## Why this exists
 
