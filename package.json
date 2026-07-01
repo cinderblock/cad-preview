@@ -1,0 +1,47 @@
+{
+  "name": "cad-preview",
+  "version": "0.1.0",
+  "description": "Extract the embedded preview/thumbnail image from CAD and 3D files (SolidWorks, 3MF, FreeCAD, Inventor, …) — pure JS, cross-platform, no native CAD tools required.",
+  "keywords": [
+    "cad",
+    "3d",
+    "thumbnail",
+    "preview",
+    "sldprt",
+    "sldasm",
+    "solidworks",
+    "3mf",
+    "freecad",
+    "inventor",
+    "stl"
+  ],
+  "license": "MIT",
+  "author": "Cameron Tacklind",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "cfb": "^1.2.2",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}
