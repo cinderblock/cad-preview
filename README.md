@@ -31,12 +31,23 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | Family | Extensions | How the preview is stored |
 | --- | --- | --- |
 | **SolidWorks (modern, ~2015+)** | `.sldprt` `.sldasm` `.slddrw` | Proprietary binary container; a 640×480 PNG stored as a raw-DEFLATE stream. Reverse-engineered — see below. |
-| **SolidWorks (legacy) / Inventor / other OLE** | `.sldprt` `.sldasm` `.slddrw` `.ipt` `.iam` | OLE compound document with a `PreviewPNG` stream or a headerless DIB `Preview` stream. |
-| **3MF / FreeCAD / Fusion / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
+| **SolidWorks (legacy, ≤2014)** | `.sldprt` `.sldasm` `.slddrw` | OLE compound document with a `PreviewPNG` stream or a headerless DIB `Preview` stream. |
+| **Autodesk Inventor** | `.ipt` `.iam` | OLE compound document with a PNG embedded inside a stream. |
+| **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
 Not every file contains a preview — e.g. a SolidWorks file saved with "save
-preview graphics" off, or a raw geometry format (STL/STEP/OBJ) — in which case
-`extractPreview` returns `null`.
+preview graphics" off, or a raw geometry format (STL/STEP/OBJ/IGES) — in which
+case `extractPreview` returns `null`.
+
+### Roadmap
+
+Formats that embed a preview and are candidates for future extractors (help
+welcome): **AutoCAD DWG** (header preview pointer → BMP/PNG), **DXF**
+(`THUMBNAILIMAGE` section → DIB), **Rhino 3DM** (openNURBS `TCODE_PREVIEWIMAGE`
+chunk, often zlib-compressed), **SketchUp SKP**, **Blender `.blend`** (thumbnail
+block), and **Solid Edge** (`.par`/`.psm`/`.asm`, OLE property-set DIB). Raw
+geometry formats (STL, STEP, OBJ, IGES) embed no raster and need an actual 3D
+render instead.
 
 ## Why this exists
 

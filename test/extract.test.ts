@@ -127,6 +127,44 @@ describe('extractPreview', () => {
     expect(preview!.source).toBe('ole')
   })
 
+  test('OLE with a PNG embedded mid-stream (Inventor-style)', () => {
+    // Inventor stores the thumbnail PNG partway into an obfuscated-name stream,
+    // preceded by a small header — not at offset 0.
+    const png = fakePng(200)
+    const stream = new Uint8Array(64 + png.length)
+    for (let i = 0; i < 64; i++) stream[i] = (i * 13) & 0xff
+    stream.set(png, 64)
+    const ole = fakeOle({ Aaobf0scated1Name2Xy: stream })
+    const preview = extractPreview(ole, { filename: 'part.ipt' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('ole')
+    expect(preview!.data[0]).toBe(0x89)
+  })
+
+  test('Fusion .f3d (ZIP with a Previews/ image part)', () => {
+    const png = fakePng()
+    const zip = zipSync({
+      'FusionAssetName[Active]/Previews/small.png': png,
+      'data.bin': new Uint8Array([1, 2, 3]),
+    })
+    expect(extractPreview(zip, { filename: 'design.f3d' })?.source).toBe('zip')
+  })
+
+  test('a bare DIB header with no pixel data is not mistaken for an image', () => {
+    // 40-byte BITMAPINFOHEADER claiming 1024×528×24bpp but with no pixels — the
+    // kind of coincidental match found scanning inside a container. Must be null.
+    const fake = new Uint8Array(64)
+    const dv = new DataView(fake.buffer)
+    dv.setUint32(0, 40, true)
+    dv.setInt32(4, 1024, true)
+    dv.setInt32(8, 528, true)
+    dv.setUint16(12, 1, true)
+    dv.setUint16(14, 24, true)
+    const ole = fakeOle({ Junk: fake })
+    expect(extractPreview(ole, { filename: 'x.sldprt' })).toBeNull()
+  })
+
   test('unknown bytes return null', () => {
     const junk = new Uint8Array(256).map((_, i) => (i * 7) & 0xff)
     expect(extractPreview(junk)).toBeNull()
