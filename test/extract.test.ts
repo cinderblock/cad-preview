@@ -68,6 +68,30 @@ function fakeRhino(): Uint8Array {
   return out
 }
 
+/** Build a DWG-shaped buffer: "AC10xx" header → sentinel → entry → DIB preview. */
+function fakeDwg(): Uint8Array {
+  const dib = fakeDib(false)
+  const sentinel = [
+    0x1f, 0x25, 0x6d, 0x07, 0xd4, 0x36, 0x28, 0x28, 0x9d, 0x57, 0xca, 0x3f,
+    0x9d, 0x44, 0x10, 0x2b,
+  ]
+  const sentinelPos = 17 // just past the 0x0D pointer
+  const entryStart = sentinelPos + 16 + 4 + 1 // sentinel + overallSize + count
+  const dibPos = entryStart + 9 // one {code,addr,size} entry
+  const out = new Uint8Array(dibPos + dib.length)
+  const dv = new DataView(out.buffer)
+  out.set('AC1015'.split('').map((c) => c.charCodeAt(0)))
+  dv.setUint32(0x0d, sentinelPos, true) // header pointer to the preview section
+  out.set(sentinel, sentinelPos)
+  dv.setUint32(sentinelPos + 16, out.length, true) // overall size
+  out[sentinelPos + 20] = 1 // image count
+  out[entryStart] = 2 // code 2 = BMP/DIB
+  dv.setUint32(entryStart + 1, dibPos, true)
+  dv.setUint32(entryStart + 5, dib.length, true)
+  out.set(dib, dibPos)
+  return out
+}
+
 /** Build a modern-SolidWorks-shaped buffer: random header + magic + raw-DEFLATE. */
 function fakeModernSw(image: Uint8Array): Uint8Array {
   const header = Uint8Array.from([
@@ -184,6 +208,14 @@ describe('extractPreview', () => {
       'data.bin': new Uint8Array([1, 2, 3]),
     })
     expect(extractPreview(zip, { filename: 'design.f3d' })?.source).toBe('zip')
+  })
+
+  test('AutoCAD DWG (preview section → DIB entry, decoded to PNG)', () => {
+    const preview = extractPreview(fakeDwg(), { filename: 'drawing.dwg' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('dwg')
+    expect(preview!.data[0]).toBe(0x89)
   })
 
   test('Rhino .3dm (zlib-compressed DIB preview)', () => {
