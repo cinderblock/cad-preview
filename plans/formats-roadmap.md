@@ -24,7 +24,11 @@ Blender (uncompressed) · SketchUp · 3MF · Fusion 360.
 - [x] **Autodesk Revit `.rvt`** — already works via OLE (`RevitPreview4.0` PNG
       stream). Verified → 128×128 building preview.
 - [x] **gzip `.blend`** — added `gunzipSync` path to the Blender extractor.
-      Verified by gzipping a real .blend. (zstd deferred — needs fzstd.)
+      Verified by gzipping a real .blend.
+- [x] **zstd `.blend`** (Blender 3.0+) — my "seekable multi-frame, too hard" guess
+      was WRONG (verify, don't assert). `fzstd.decompress` handles a real Blender
+      4.03 zstd file in one call. Added fzstd + the zstd branch. Verified on
+      download.blender.org/demo/geometry-nodes/gizmo_array.blend → 128×70 thumb.
 - [x] Hardened `findEmbeddedImage` to match BITMAPV4/V5 DIB headers (108/124),
       not just biSize 40.
 - [ ] **DWF** — DEFERRED. `(DWF V06.00)` prefix + a ZIP payload, but the ZIP uses

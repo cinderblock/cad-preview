@@ -1,9 +1,14 @@
 import { gunzipSync } from 'fflate'
+import { decompress as zstdDecompress } from 'fzstd'
 import type { FormatExtractor, Preview } from '../types'
 import { encodePng } from '../util/png'
 
 // Uncompressed .blend files start with "BLENDER".
 const BLENDER_MAGIC = Uint8Array.from('BLENDER'.split('').map((c) => c.charCodeAt(0)))
+
+const isGzip = (d: Uint8Array) => d.length > 2 && d[0] === 0x1f && d[1] === 0x8b
+const isZstd = (d: Uint8Array) =>
+  d.length > 4 && d[0] === 0x28 && d[1] === 0xb5 && d[2] === 0x2f && d[3] === 0xfd
 
 /**
  * Blender .blend. After a 12-byte header ("BLENDER", a pointer-size flag, an
@@ -13,20 +18,20 @@ const BLENDER_MAGIC = Uint8Array.from('BLENDER'.split('').map((c) => c.charCodeA
  * {int32 width, int32 height, then width*height RGBA pixels}, stored bottom-up.
  *
  * We validate by requiring the block size to equal 8 + width*height*4 exactly.
- * Legacy gzip-compressed .blend files (whole-stream gzip) are decompressed first;
- * zstd-compressed files (Blender 3.0+) are not yet supported. The thumbnail sits
- * near the start, so parsing stays cheap.
+ * Compressed files are decompressed first: legacy gzip (whole-stream) via fflate,
+ * and Blender 3.0+ zstd via fzstd. The thumbnail sits near the start, so parsing
+ * stays cheap.
  */
 export const blenderExtractor: FormatExtractor = {
   name: 'blender',
   canHandle: ({ data, lower }) =>
     startsWith(data, BLENDER_MAGIC) ||
-    // gzip-compressed .blend (magic 1F 8B) — gated on extension.
-    (data.length > 2 && data[0] === 0x1f && data[1] === 0x8b && lower.endsWith('.blend')),
+    // Compressed .blend has no "BLENDER" magic — gate on extension.
+    ((isGzip(data) || isZstd(data)) && lower.endsWith('.blend')),
   extract: ({ data }): Preview | null => {
-    if (data[0] === 0x1f && data[1] === 0x8b) {
+    if (isGzip(data) || isZstd(data)) {
       try {
-        data = gunzipSync(data)
+        data = isGzip(data) ? gunzipSync(data) : zstdDecompress(data)
       } catch {
         return null
       }

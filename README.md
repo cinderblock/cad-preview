@@ -39,7 +39,7 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **Rhino 3DM** | `.3dm` | openNURBS preview chunk — a Windows DIB whose pixels are zlib-compressed (or, rarely, uncompressed). |
 | **AutoCAD DWG** | `.dwg` | Preview-image section (header pointer → sentinel → entry table); a headerless DIB (R13–R2010) or PNG (R2013+). |
 | **AutoCAD DXF** | `.dxf` | Optional `THUMBNAILIMAGE` section; a Windows DIB hex-encoded across group-code 310 lines. |
-| **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail. Uncompressed and legacy gzip-compressed files. |
+| **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail. Uncompressed, gzip-, and zstd-compressed (Blender 3.0+) files. |
 | **SketchUp** | `.skp` | Version header immediately followed by the thumbnail as an embedded PNG. |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
@@ -58,10 +58,9 @@ case `extractPreview` returns `null`.
 
 ### Roadmap
 
-Candidates for future extractors (help welcome): **zstd-compressed `.blend`**
-(Blender 3.0+ — needs a zstd decoder), and **DWF** (legacy Autodesk web format —
-a non-standard ZIP variant). Raw geometry formats (STL, STEP, OBJ, IGES) embed no
-raster and need an actual 3D render instead.
+Candidates for future extractors (help welcome): **DWF** (legacy Autodesk web
+format — a non-standard ZIP variant fflate can't unpack). Raw geometry formats
+(STL, STEP, OBJ, IGES) embed no raster and need an actual 3D render instead.
 
 ## Why this exists
 
