@@ -1,3 +1,4 @@
+import { gunzipSync } from 'fflate'
 import type { FormatExtractor, Preview } from '../types'
 import { encodePng } from '../util/png'
 
@@ -12,13 +13,25 @@ const BLENDER_MAGIC = Uint8Array.from('BLENDER'.split('').map((c) => c.charCodeA
  * {int32 width, int32 height, then width*height RGBA pixels}, stored bottom-up.
  *
  * We validate by requiring the block size to equal 8 + width*height*4 exactly.
- * Only uncompressed files are handled (gzip/zstd-compressed .blend files wrap the
- * whole stream); the thumbnail sits near the start, so this stays cheap.
+ * Legacy gzip-compressed .blend files (whole-stream gzip) are decompressed first;
+ * zstd-compressed files (Blender 3.0+) are not yet supported. The thumbnail sits
+ * near the start, so parsing stays cheap.
  */
 export const blenderExtractor: FormatExtractor = {
   name: 'blender',
-  canHandle: ({ data }) => startsWith(data, BLENDER_MAGIC),
+  canHandle: ({ data, lower }) =>
+    startsWith(data, BLENDER_MAGIC) ||
+    // gzip-compressed .blend (magic 1F 8B) — gated on extension.
+    (data.length > 2 && data[0] === 0x1f && data[1] === 0x8b && lower.endsWith('.blend')),
   extract: ({ data }): Preview | null => {
+    if (data[0] === 0x1f && data[1] === 0x8b) {
+      try {
+        data = gunzipSync(data)
+      } catch {
+        return null
+      }
+      if (!startsWith(data, BLENDER_MAGIC)) return null
+    }
     const ptrSize = data[7] === 0x2d ? 8 : 4 // '-' = 8-byte pointers, '_' = 4
     const little = data[8] !== 0x56 // 'V' = big-endian, 'v' = little
     const dv = new DataView(data.buffer, data.byteOffset, data.length)

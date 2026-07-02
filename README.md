@@ -33,16 +33,24 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **SolidWorks (modern, ~2015+)** | `.sldprt` `.sldasm` `.slddrw` | Proprietary binary container; a 640×480 PNG stored as a raw-DEFLATE stream. Reverse-engineered — see below. |
 | **SolidWorks (legacy, ≤2014)** | `.sldprt` `.sldasm` `.slddrw` | OLE compound document with a `PreviewPNG` stream or a headerless DIB `Preview` stream. |
 | **Autodesk Inventor** | `.ipt` `.iam` | OLE compound document with a PNG embedded inside a stream. |
+| **Solid Edge** | `.par` `.psm` `.asm` `.dft` | OLE compound document with a DIB thumbnail embedded in a stream / property set. |
+| **Autodesk 3ds Max** | `.max` | OLE compound document with a DIB thumbnail. |
+| **Autodesk Revit** | `.rvt` `.rfa` | OLE compound document with a `RevitPreview` PNG stream. |
 | **Rhino 3DM** | `.3dm` | openNURBS preview chunk — a Windows DIB whose pixels are zlib-compressed (or, rarely, uncompressed). |
 | **AutoCAD DWG** | `.dwg` | Preview-image section (header pointer → sentinel → entry table); a headerless DIB (R13–R2010) or PNG (R2013+). |
 | **AutoCAD DXF** | `.dxf` | Optional `THUMBNAILIMAGE` section; a Windows DIB hex-encoded across group-code 310 lines. |
-| **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail (uncompressed files). |
+| **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail. Uncompressed and legacy gzip-compressed files. |
 | **SketchUp** | `.skp` | Version header immediately followed by the thumbnail as an embedded PNG. |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
-Previews stored as a Windows DIB (Rhino, some SolidWorks/Solid Edge) are
-transcoded to **PNG** on the way out, so every result is a browser- and
-libvips/sharp-decodable image (never a raw BMP). `Preview.format` tells you which.
+The OLE compound-document family (legacy SolidWorks, Inventor, Solid Edge, 3ds
+Max, Revit, …) is handled generically: any embedded PNG or Windows DIB
+(BITMAPINFOHEADER / V4 / V5) in any stream is found and, if a DIB, transcoded to
+PNG. So many OLE-based CAD formats work without a dedicated extractor.
+
+Previews stored as a Windows DIB are transcoded to **PNG** on the way out, so
+every result is a browser- and libvips/sharp-decodable image (never a raw BMP).
+`Preview.format` tells you which.
 
 Not every file contains a preview — e.g. a SolidWorks file saved with "save
 preview graphics" off, or a raw geometry format (STL/STEP/OBJ/IGES) — in which
@@ -50,10 +58,10 @@ case `extractPreview` returns `null`.
 
 ### Roadmap
 
-Formats that embed a preview and are candidates for future extractors (help
-welcome): **Solid Edge** (`.par`/`.psm`/`.asm`, OLE property-set DIB) and
-**compressed `.blend`** (gzip/zstd-wrapped). Raw geometry formats (STL, STEP,
-OBJ, IGES) embed no raster and need an actual 3D render instead.
+Candidates for future extractors (help welcome): **zstd-compressed `.blend`**
+(Blender 3.0+ — needs a zstd decoder), and **DWF** (legacy Autodesk web format —
+a non-standard ZIP variant). Raw geometry formats (STL, STEP, OBJ, IGES) embed no
+raster and need an actual 3D render instead.
 
 ## Why this exists
 

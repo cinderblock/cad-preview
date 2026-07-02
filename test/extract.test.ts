@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import * as CFB from 'cfb'
-import { deflateSync, zipSync, zlibSync } from 'fflate'
+import { deflateSync, gzipSync, zipSync, zlibSync } from 'fflate'
 import { dibToPng, extractPreview, registerExtractor } from '../src/index'
 
 /** A byte blob that begins with the PNG signature (enough for content sniffing). */
@@ -11,22 +11,25 @@ function fakePng(size = 64): Uint8Array {
   return b
 }
 
-/** A minimal headerless DIB (BITMAPINFOHEADER + pixels), optional length prefix. */
-function fakeDib(withLenPrefix: boolean): Uint8Array {
+/**
+ * A minimal headerless DIB (BITMAPINFOHEADER + pixels), optional length prefix.
+ * `biSize` selects the header form: 40 (BITMAPINFOHEADER), 108 (V4), 124 (V5).
+ */
+function fakeDib(withLenPrefix: boolean, biSize = 40): Uint8Array {
   const w = 4
   const h = 4
   const bpp = 24
   const rowBytes = w * 3 // already a multiple of 4
   const pixels = rowBytes * h
-  const dib = new Uint8Array(40 + pixels)
+  const dib = new Uint8Array(biSize + pixels)
   const dv = new DataView(dib.buffer)
-  dv.setUint32(0, 40, true) // biSize
+  dv.setUint32(0, biSize, true) // biSize
   dv.setInt32(4, w, true)
   dv.setInt32(8, h, true)
   dv.setUint16(12, 1, true) // planes
   dv.setUint16(14, bpp, true)
   dv.setUint32(16, 0, true) // BI_RGB
-  for (let i = 40; i < dib.length; i++) dib[i] = (i * 11) & 0xff
+  for (let i = biSize; i < dib.length; i++) dib[i] = (i * 11) & 0xff
   if (!withLenPrefix) return dib
   const out = new Uint8Array(4 + dib.length)
   new DataView(out.buffer).setUint32(0, dib.length, true)
@@ -204,6 +207,20 @@ describe('extractPreview', () => {
     expect(preview!.data[0]).toBe(0x89) // PNG signature
   })
 
+  test('OLE with a V5 DIB embedded mid-stream (Solid Edge / 3ds Max-style)', () => {
+    // Solid Edge, 3ds Max, and OLE property-set thumbnails store a DIB (often a
+    // BITMAPV4/V5 header) partway into a stream — not at offset 0.
+    const dib = fakeDib(false, 124)
+    const stream = new Uint8Array(48 + dib.length)
+    for (let i = 0; i < 48; i++) stream[i] = (i * 17) & 0xff
+    stream.set(dib, 48)
+    const ole = fakeOle({ Bxq1obfuscated2name: stream })
+    const preview = extractPreview(ole, { filename: 'part.par' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('ole')
+  })
+
   test('OLE with a PNG embedded mid-stream (Inventor-style)', () => {
     // Inventor stores the thumbnail PNG partway into an obfuscated-name stream,
     // preceded by a small header — not at offset 0.
@@ -249,6 +266,15 @@ describe('extractPreview', () => {
     expect(preview!.format).toBe('png')
     expect(preview!.source).toBe('blender')
     expect(preview!.data[0]).toBe(0x89)
+  })
+
+  test('gzip-compressed .blend (legacy compression)', () => {
+    const preview = extractPreview(gzipSync(fakeBlend()), {
+      filename: 'scene.blend',
+    })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('blender')
   })
 
   test('AutoCAD DWG (preview section → DIB entry, decoded to PNG)', () => {
