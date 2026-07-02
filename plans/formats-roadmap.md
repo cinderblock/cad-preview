@@ -8,10 +8,12 @@ Extract embedded previews for as many CAD/3D formats as have a real, verifiable
 embedded raster. Verify-first: get a real sample, confirm the extracted image
 renders (sharp), THEN ship the extractor + a synthetic test.
 
-## Done (verified on real files)
+## Done (16 formats, all verified on real files — 17/17 samples render)
 
-SolidWorks modern + legacy · Inventor · Rhino 3DM · AutoCAD DWG · AutoCAD DXF ·
-Blender (uncompressed) · SketchUp · 3MF · Fusion 360.
+SolidWorks modern + legacy · Inventor · Solid Edge · 3ds Max · Revit · Rhino 3DM ·
+AutoCAD DWG · AutoCAD DXF · Blender (uncompressed / gzip / zstd) · SketchUp · DWF ·
+3MF · FreeCAD · Fusion 360. Nothing left but raw-geometry formats (no embedded
+raster → need a 3D render, out of scope).
 
 ## This round ("try harder") — results
 
