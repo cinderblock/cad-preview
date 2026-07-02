@@ -268,6 +268,19 @@ describe('extractPreview', () => {
     expect(preview!.data[0]).toBe(0x89)
   })
 
+  test('Autodesk DWF (ZIP behind a "(DWF V..." prefix)', () => {
+    const png = fakePng(100)
+    const zip = zipSync({ 'sheet/eplot.png': png })
+    const prefix = '(DWF V06.00)'.split('').map((c) => c.charCodeAt(0))
+    const dwf = new Uint8Array(prefix.length + zip.length)
+    dwf.set(prefix)
+    dwf.set(zip, prefix.length)
+    const preview = extractPreview(dwf, { filename: 'drawing.dwf' })
+    expect(preview).not.toBeNull()
+    expect(preview!.format).toBe('png')
+    expect(preview!.source).toBe('dwf')
+  })
+
   test('gzip-compressed .blend (legacy compression)', () => {
     const preview = extractPreview(gzipSync(fakeBlend()), {
       filename: 'scene.blend',

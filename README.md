@@ -41,6 +41,7 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **AutoCAD DXF** | `.dxf` | Optional `THUMBNAILIMAGE` section; a Windows DIB hex-encoded across group-code 310 lines. |
 | **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail. Uncompressed, gzip-, and zstd-compressed (Blender 3.0+) files. |
 | **SketchUp** | `.skp` | Version header immediately followed by the thumbnail as an embedded PNG. |
+| **Autodesk DWF** | `.dwf` | ZIP behind a `(DWF V...` prefix; each ePlot sheet stores a rasterized PNG. |
 | **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
 
 The OLE compound-document family (legacy SolidWorks, Inventor, Solid Edge, 3ds
@@ -58,9 +59,9 @@ case `extractPreview` returns `null`.
 
 ### Roadmap
 
-Candidates for future extractors (help welcome): **DWF** (legacy Autodesk web
-format — a non-standard ZIP variant fflate can't unpack). Raw geometry formats
-(STL, STEP, OBJ, IGES) embed no raster and need an actual 3D render instead.
+Raw geometry formats (STL, STEP, OBJ, IGES, Parasolid) embed no raster preview —
+generating a thumbnail for those needs an actual 3D render, which is out of scope
+for this (pure-parsing, no-GPU) library. New embedded-preview formats are welcome.
 
 ## Why this exists
 

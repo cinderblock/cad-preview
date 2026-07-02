@@ -1,12 +1,16 @@
 import { unzipSync } from 'fflate'
-import type { ExtractContext, FormatExtractor, Preview } from '../types'
+import type { FormatExtractor, Preview } from '../types'
 import { imageSig } from '../util/image'
+import { scanZipImages } from '../util/zipscan'
 
 /**
  * ZIP / OPC packages that embed a thumbnail part: 3MF (/Metadata/thumbnail.png),
  * FreeCAD .FCStd (thumbnails/Thumbnail.png), Fusion .f3d, and friends. We only
  * decompress entries whose name looks like a thumbnail/preview image — never the
  * (potentially huge) geometry parts.
+ *
+ * If the strict reader chokes (a non-standard / streaming ZIP), we fall back to a
+ * manual local-header scan for a thumbnail/preview-named image.
  */
 export const zipExtractor: FormatExtractor = {
   name: 'zip',
@@ -14,22 +18,32 @@ export const zipExtractor: FormatExtractor = {
     // ZIP local file header "PK\x03\x04" (OPC packages start here too).
     data.length >= 4 && data[0] === 0x50 && data[1] === 0x4b,
   extract: ({ data }): Preview | null => {
-    const files = unzipSync(data, {
-      filter: (f) =>
-        /(thumbnail|preview)/i.test(f.name) &&
-        /\.(png|jpe?g|bmp|gif)$/i.test(f.name),
-    })
-    const entries = Object.entries(files).filter(([, b]) => imageSig(b))
-    if (!entries.length) return null
-    // Prefer PNG, then the largest.
-    entries.sort(
-      ([an, ab], [bn, bb]) =>
-        Number(/\.png$/i.test(bn)) - Number(/\.png$/i.test(an)) ||
-        bb.length - ab.length,
+    try {
+      const files = unzipSync(data, {
+        filter: (f) =>
+          /(thumbnail|preview)/i.test(f.name) &&
+          /\.(png|jpe?g|bmp|gif)$/i.test(f.name),
+      })
+      const entries = Object.entries(files).filter(([, b]) => imageSig(b))
+      if (entries.length) {
+        // Prefer PNG, then the largest.
+        entries.sort(
+          ([an, ab], [bn, bb]) =>
+            Number(/\.png$/i.test(bn)) - Number(/\.png$/i.test(an)) ||
+            bb.length - ab.length,
+        )
+        const bytes = entries[0][1]
+        const format = imageSig(bytes)
+        if (format) return { data: bytes, format, source: 'zip' }
+      }
+    } catch {
+      // fall through to the tolerant scan
+    }
+    const scanned = scanZipImages(data).filter((e) =>
+      /(thumbnail|preview)/i.test(e.name),
     )
-    const bytes = entries[0][1]
-    const format = imageSig(bytes)
-    if (!format) return null
-    return { data: bytes, format, source: 'zip' }
+    if (!scanned.length) return null
+    const pick = scanned.find((e) => e.format === 'png') ?? scanned[0]
+    return { data: pick.data, format: pick.format, source: 'zip' }
   },
 }

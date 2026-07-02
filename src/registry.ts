@@ -1,4 +1,5 @@
 import { blenderExtractor } from './formats/blender'
+import { dwfExtractor } from './formats/dwf'
 import { dwgExtractor } from './formats/dwg'
 import { dxfExtractor } from './formats/dxf'
 import { oleExtractor } from './formats/ole'
@@ -10,8 +11,8 @@ import type { FormatExtractor } from './types'
 
 /**
  * Built-in extractors, tried in order. Magic-based ones (OLE, ZIP, Rhino, DWG,
- * Blender, SketchUp) come first; extension-gated ones (modern SolidWorks, DXF)
- * last, since they can't cheaply rule themselves out by content alone.
+ * Blender, SketchUp, DWF) come first; extension-gated ones (modern SolidWorks,
+ * DXF) last, since they can't cheaply rule themselves out by content alone.
  */
 export const builtinExtractors: readonly FormatExtractor[] = [
   oleExtractor,
@@ -20,6 +21,7 @@ export const builtinExtractors: readonly FormatExtractor[] = [
   dwgExtractor,
   blenderExtractor,
   sketchupExtractor,
+  dwfExtractor,
   solidworksModernExtractor,
   dxfExtractor,
 ]

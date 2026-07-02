@@ -31,9 +31,11 @@ Blender (uncompressed) · SketchUp · 3MF · Fusion 360.
       download.blender.org/demo/geometry-nodes/gizmo_array.blend → 128×70 thumb.
 - [x] Hardened `findEmbeddedImage` to match BITMAPV4/V5 DIB headers (108/124),
       not just biSize 40.
-- [ ] **DWF** — DEFERRED. `(DWF V06.00)` prefix + a ZIP payload, but the ZIP uses
-      a non-standard compression method fflate rejects ("unknown compression type
-      25956"). Legacy/niche; skipped. No clean `.dwfx` sample found.
+- [x] **DWF** — DONE (another wrong "too hard" call). fflate's whole-archive
+      unzip fails on DWF's streaming entries, but the entries are standard DEFLATE
+      and the ePlot sheet PNGs extract fine via a manual local-header scan
+      (`src/util/zipscan.ts`). Verified → an architectural floor-plan sheet. The
+      zip extractor now also uses this scan as a fallback when strict unzip throws.
 
 ## Findings
 
