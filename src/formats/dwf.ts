@@ -19,10 +19,15 @@ export const dwfExtractor: FormatExtractor = {
     }
     return true
   },
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     const images = scanZipImages(data)
-    if (!images.length) return null
-    const pick = images.find((e) => e.format === 'png') ?? images[0]
-    return { data: pick.data, format: pick.format, source: 'dwf' }
+    // PNGs first (the ePlot sheet renders), preserving sheet order within.
+    images.sort((a, b) => Number(b.format === 'png') - Number(a.format === 'png'))
+    return images.map((e) => ({
+      data: e.data,
+      format: e.format,
+      source: 'dwf',
+      name: e.name,
+    }))
   },
 }

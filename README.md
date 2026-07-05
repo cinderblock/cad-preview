@@ -18,6 +18,7 @@ if (preview) {
   // preview.data  -> Uint8Array of image bytes
   // preview.format -> 'png' | 'jpeg' | 'bmp' | 'gif'
   // preview.source -> which extractor produced it
+  // preview.name   -> identifier when the file has several (see below)
 } else {
   // No embedded preview — fall back to an icon or a 3D render.
 }
@@ -25,6 +26,22 @@ if (preview) {
 
 Pass `filename` whenever you have it: a couple of formats (notably modern
 SolidWorks) have no reliable file magic and are recognized by extension.
+
+### Multiple previews
+
+Some files hold several previews — a Bambu Studio 3MF has one render per build
+plate, a DWF has one per sheet, an OLE compound doc can carry several image
+streams, a SketchUp file can embed scene previews. `extractPreviews` returns them
+all, best-first; `extractPreview` returns just the first (the default pick).
+
+```ts
+import { extractPreviews } from 'cad-preview'
+
+const all = extractPreviews(bytes, { filename: 'print.3mf' })
+// -> [ { name: 'Metadata/plate_1.png', data, format, source },
+//      { name: 'Metadata/plate_2.png', … }, … ]
+// all[0] === extractPreview(...) ; use `name` to label a chooser.
+```
 
 ## Supported formats
 

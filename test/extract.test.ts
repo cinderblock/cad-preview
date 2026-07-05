@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import * as CFB from 'cfb'
 import { deflateSync, gzipSync, zipSync, zlibSync } from 'fflate'
-import { dibToPng, extractPreview, registerExtractor } from '../src/index'
+import {
+  dibToPng,
+  extractPreview,
+  extractPreviews,
+  registerExtractor,
+} from '../src/index'
 
 /** A byte blob that begins with the PNG signature (enough for content sniffing). */
 function fakePng(size = 64): Uint8Array {
@@ -189,6 +194,39 @@ describe('extractPreview', () => {
     })
     const preview = extractPreview(zip, { filename: 'multi.3mf' })
     expect(preview!.data.length).toBe(plate.length) // plate_1, the largest & first
+  })
+
+  test('extractPreviews returns every plate; extractPreview returns the default', () => {
+    const zip = zipSync({
+      'Metadata/plate_1.png': fakePng(300),
+      'Metadata/plate_2.png': fakePng(280),
+      'Metadata/plate_3.png': fakePng(260),
+      'Metadata/top_1.png': fakePng(90), // a slicer map — excluded
+      '3D/3dmodel.model': new Uint8Array([1, 2, 3]),
+    })
+    const all = extractPreviews(zip, { filename: 'multi.3mf' })
+    expect(all.length).toBe(3) // three plates, not the top_ map
+    expect(all.every((p) => p.format === 'png' && p.source === 'zip')).toBe(true)
+    expect(all.map((p) => p.name)).toEqual([
+      'Metadata/plate_1.png',
+      'Metadata/plate_2.png',
+      'Metadata/plate_3.png',
+    ])
+    // The single-preview API returns the same first element.
+    const one = extractPreview(zip, { filename: 'multi.3mf' })
+    expect(one!.name).toBe(all[0].name)
+    expect(one!.data.length).toBe(all[0].data.length)
+  })
+
+  test('extractPreviews returns a one-element list for single-preview formats', () => {
+    const all = extractPreviews(fakeModernSw(fakePng()), { filename: 'p.sldprt' })
+    expect(all.length).toBe(1)
+    expect(all[0].source).toBe('solidworks-modern')
+  })
+
+  test('extractPreviews returns [] when there is no preview', () => {
+    const zip = zipSync({ 'model.stl': new Uint8Array([9, 8, 7, 6]) })
+    expect(extractPreviews(zip, { filename: 'x.3mf' })).toEqual([])
   })
 
   test('modern SolidWorks part (raw-DEFLATE PNG after stream magic)', () => {
@@ -383,11 +421,9 @@ describe('extractPreview', () => {
     const unregister = registerExtractor({
       name: 'demo',
       canHandle: ({ lower }) => lower.endsWith('.demo'),
-      extract: ({ data }) => ({
-        data: data.subarray(2),
-        format: 'png',
-        source: 'demo',
-      }),
+      extract: ({ data }) => [
+        { data: data.subarray(2), format: 'png', source: 'demo' },
+      ],
     })
     expect(extractPreview(wrapped, { filename: 'a.demo' })?.source).toBe('demo')
     unregister()

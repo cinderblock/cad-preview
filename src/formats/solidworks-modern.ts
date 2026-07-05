@@ -24,7 +24,7 @@ const SW_STREAM_MAGIC = Uint8Array.from([0x27, 0x56, 0x67, 0x96, 0x56, 0x77])
 export const solidworksModernExtractor: FormatExtractor = {
   name: 'solidworks-modern',
   canHandle: ({ lower }) => /\.sld(prt|asm|drw)$/.test(lower),
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     let dibFallback: Uint8Array | null = null
     let from = 0
     for (;;) {
@@ -44,13 +44,13 @@ export const solidworksModernExtractor: FormatExtractor = {
           continue
         }
         const format = imageSig(out)
-        if (format) return { data: out, format, source: 'solidworks-modern' }
+        if (format) return [{ data: out, format, source: 'solidworks-modern' }]
         if (!dibFallback) dibFallback = dibToPng(out)
       }
     }
     if (dibFallback) {
-      return { data: dibFallback, format: 'png', source: 'solidworks-modern' }
+      return [{ data: dibFallback, format: 'png', source: 'solidworks-modern' }]
     }
-    return null
+    return []
   },
 }

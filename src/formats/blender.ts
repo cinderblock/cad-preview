@@ -28,14 +28,14 @@ export const blenderExtractor: FormatExtractor = {
     startsWith(data, BLENDER_MAGIC) ||
     // Compressed .blend has no "BLENDER" magic — gate on extension.
     ((isGzip(data) || isZstd(data)) && lower.endsWith('.blend')),
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     if (isGzip(data) || isZstd(data)) {
       try {
         data = isGzip(data) ? gunzipSync(data) : zstdDecompress(data)
       } catch {
-        return null
+        return []
       }
-      if (!startsWith(data, BLENDER_MAGIC)) return null
+      if (!startsWith(data, BLENDER_MAGIC)) return []
     }
     const ptrSize = data[7] === 0x2d ? 8 : 4 // '-' = 8-byte pointers, '_' = 4
     const little = data[8] !== 0x56 // 'V' = big-endian, 'v' = little
@@ -59,7 +59,7 @@ export const blenderExtractor: FormatExtractor = {
           size !== 8 + width * height * 4 ||
           dataStart + 8 + width * height * 4 > data.length
         ) {
-          return null
+          return []
         }
         const src = data.subarray(dataStart + 8)
         // Blender stores the thumbnail bottom-up; flip to top-down RGBA.
@@ -71,11 +71,13 @@ export const blenderExtractor: FormatExtractor = {
             y * rowBytes,
           )
         }
-        return { data: encodePng(width, height, rgba, 4), format: 'png', source: 'blender' }
+        return [
+          { data: encodePng(width, height, rgba, 4), format: 'png', source: 'blender' },
+        ]
       }
       p = dataStart + size
     }
-    return null
+    return []
   },
 }
 

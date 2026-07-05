@@ -21,25 +21,27 @@ export const zipExtractor: FormatExtractor = {
   canHandle: ({ data }) =>
     // ZIP local file header "PK\x03\x04" (OPC packages start here too).
     data.length >= 4 && data[0] === 0x50 && data[1] === 0x4b,
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     try {
       const files = unzipSync(data, { filter: (f) => isCandidate(f.name) })
-      const entries = Object.entries(files).filter(([, b]) => imageSig(b))
-      if (entries.length) {
-        entries.sort(
-          ([an, ab], [bn, bb]) => score(bn, bb.length) - score(an, ab.length),
-        )
-        const bytes = entries[0][1]
+      const previews: Preview[] = []
+      for (const [name, bytes] of Object.entries(files)) {
         const format = imageSig(bytes)
-        if (format) return { data: bytes, format, source: 'zip' }
+        if (format) previews.push({ data: bytes, format, source: 'zip', name })
+      }
+      if (previews.length) {
+        previews.sort(
+          (a, b) => score(b.name!, b.data.length) - score(a.name!, a.data.length),
+        )
+        return previews
       }
     } catch {
       // fall through to the tolerant scan
     }
-    const scanned = scanZipImages(data).filter((e) => isCandidate(e.name))
-    if (!scanned.length) return null
-    scanned.sort((a, b) => score(b.name, b.data.length) - score(a.name, a.data.length))
-    return { data: scanned[0].data, format: scanned[0].format, source: 'zip' }
+    return scanZipImages(data)
+      .filter((e) => isCandidate(e.name))
+      .sort((a, b) => score(b.name, b.data.length) - score(a.name, a.data.length))
+      .map((e) => ({ data: e.data, format: e.format, source: 'zip', name: e.name }))
   },
 }
 
@@ -50,15 +52,18 @@ function isCandidate(name: string): boolean {
 }
 
 /**
- * Rank candidates: a slicer plate render first (nicest — and earlier plates win),
- * then a generic thumbnail/preview part, then PNG, then the largest.
+ * Rank candidates: slicer plate renders first (the nicest preview), ordered by
+ * plate number so a multi-plate list reads 1, 2, 3…; then a generic
+ * thumbnail/preview part, then PNG, then the largest. Plate scores dominate the
+ * others so a Bambu file's default is plate_1.
  */
 function score(name: string, length: number): number {
   const lo = name.toLowerCase()
-  let s = length
   const plate = lo.match(/(?:^|\/)plate_(\d+)\.png$/)
-  if (plate) s += 1e12 - Number(plate[1]) * 1e3
-  else if (/thumbnail|preview/.test(lo)) s += 5e11
+  // Index-ordered and far above any non-plate score (plate number dominates size).
+  if (plate) return 1e13 - Number(plate[1]) * 1e6
+  let s = length
+  if (/thumbnail|preview/.test(lo)) s += 5e11
   if (/\.png$/.test(lo)) s += 1e9
   return s
 }

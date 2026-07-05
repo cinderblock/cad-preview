@@ -16,11 +16,11 @@ import { imageSig } from '../util/image'
 export const dxfExtractor: FormatExtractor = {
   name: 'dxf',
   canHandle: ({ lower }) => lower.endsWith('.dxf'),
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     // DXF is line-oriented ASCII; decode as latin1 so bytes map 1:1 to chars.
     const text = latin1(data)
     const marker = text.indexOf('THUMBNAILIMAGE')
-    if (marker < 0) return null
+    if (marker < 0) return []
 
     const lines = text.slice(marker).split('\n')
     let hex = ''
@@ -32,16 +32,16 @@ export const dxfExtractor: FormatExtractor = {
       if (code === '0') break // start of the next entity / ENDSEC
       if (code === '310') hex += value
     }
-    if (hex.length < 8) return null
+    if (hex.length < 8) return []
 
     const bytes = hexToBytes(hex)
-    if (!bytes) return null
+    if (!bytes) return []
     if (imageSig(bytes) === 'png') {
-      return { data: bytes, format: 'png', source: 'dxf' }
+      return [{ data: bytes, format: 'png', source: 'dxf' }]
     }
     const png = dibToPng(bytes)
-    if (png) return { data: png, format: 'png', source: 'dxf' }
-    return null
+    if (png) return [{ data: png, format: 'png', source: 'dxf' }]
+    return []
   },
 }
 

@@ -26,7 +26,7 @@ const DIB_HDR = Uint8Array.from([0x28, 0x00, 0x00, 0x00]) // biSize = 40
 export const rhinoExtractor: FormatExtractor = {
   name: 'rhino',
   canHandle: ({ data }) => indexOfSeq(data, RHINO_MAGIC) === 0,
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     for (
       let k = indexOfSeq(data, DIB_HDR);
       k >= 0;
@@ -79,13 +79,13 @@ export const rhinoExtractor: FormatExtractor = {
         dib.set(data.subarray(k, k + 40 + paletteBytes), 0)
         dib.set(pixels, 40 + paletteBytes)
         const png = dibToPng(dib)
-        if (png) return { data: png, format: 'png', source: 'rhino' }
+        if (png) return [{ data: png, format: 'png', source: 'rhino' }]
       }
 
       // Uncompressed: pixels sit right after the header (+palette).
       const direct = dibToPng(data.subarray(k))
-      if (direct) return { data: direct, format: 'png', source: 'rhino' }
+      if (direct) return [{ data: direct, format: 'png', source: 'rhino' }]
     }
-    return null
+    return []
   },
 }

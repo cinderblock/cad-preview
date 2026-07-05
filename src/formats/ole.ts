@@ -26,10 +26,9 @@ export const oleExtractor: FormatExtractor = {
     data[1] === 0xcf &&
     data[2] === 0x11 &&
     data[3] === 0xe0,
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     const cf = CFB.read(data, { type: 'buffer' })
-    let best: { data: Uint8Array; format: ImageFormat; score: number } | null =
-      null
+    const candidates: Array<Preview & { score: number }> = []
     cf.FullPaths.forEach((path, i) => {
       const entry = cf.FileIndex[i]
       // type 2 === stream
@@ -54,13 +53,10 @@ export const oleExtractor: FormatExtractor = {
       let score = found.data.length
       if (/preview|thumbnail/.test(lower)) score += 1e12
       if (found.format === 'png') score += 1e9
-      if (!best || score > best.score) best = { ...found, score }
+      candidates.push({ ...found, source: 'ole', name: path, score })
     })
-    if (!best) return null
-    const { data: bytes, format } = best as {
-      data: Uint8Array
-      format: ImageFormat
-    }
-    return { data: bytes, format, source: 'ole' }
+    // Best-first: preview/thumbnail-named, then PNG, then largest.
+    candidates.sort((a, b) => b.score - a.score)
+    return candidates.map(({ score, ...preview }) => preview)
   },
 }

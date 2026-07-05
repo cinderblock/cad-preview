@@ -1,4 +1,4 @@
-import type { FormatExtractor, ImageFormat, Preview } from '../types'
+import type { FormatExtractor, Preview } from '../types'
 import { indexOfSeq } from '../util/bytes'
 import { dibToPng } from '../util/dib'
 import { imageSig } from '../util/image'
@@ -24,20 +24,20 @@ export const dwgExtractor: FormatExtractor = {
     data[1] === 0x43 && // 'C'
     data[2] === 0x31 && // '1'
     data[3] === 0x30, // '0'
-  extract: ({ data }): Preview | null => {
+  extract: ({ data }): Preview[] => {
     const dv = new DataView(data.buffer, data.byteOffset, data.length)
     // The header pointer usually lands on the sentinel; fall back to a scan.
     let p = dv.getUint32(0x0d, true)
     if (!sentinelAt(data, p)) {
       p = indexOfSeq(data, SENTINEL)
-      if (p < 0) return null
+      if (p < 0) return []
     }
     p += SENTINEL.length
-    if (p + 5 > data.length) return null
+    if (p + 5 > data.length) return []
     p += 4 // overall size
     const count = data[p]
     p += 1
-    if (count > 16) return null
+    if (count > 16) return []
 
     let png: Uint8Array | null = null
     let dib: Uint8Array | null = null
@@ -56,10 +56,11 @@ export const dwgExtractor: FormatExtractor = {
         if (conv) dib = conv
       }
     }
-    const best = png ?? dib
-    if (!best) return null
-    const format: ImageFormat = 'png'
-    return { data: best, format, source: 'dwg' }
+    // A DWG has at most one PNG and one DIB entry; PNG (newer) preferred.
+    const previews: Preview[] = []
+    if (png) previews.push({ data: png, format: 'png', source: 'dwg', name: 'png' })
+    if (dib) previews.push({ data: dib, format: 'png', source: 'dwg', name: 'bmp' })
+    return previews
   },
 }
 
