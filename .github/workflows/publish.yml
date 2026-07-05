@@ -1,0 +1,46 @@
+name: Publish
+
+# Publishes to npm when a GitHub Release is published. Cut a release whose tag
+# matches the package.json version (e.g. package.json 0.2.0 → tag v0.2.0), and
+# this runs the checks and publishes cad-preview@<version> to npm.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # setup-node wires up ~/.npmrc so `npm publish` authenticates via NODE_AUTH_TOKEN.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun test
+      - run: bun run build
+
+      - name: Verify package.json version matches the release tag
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "::error::package.json version ($PKG) != release tag ($TAG)"
+            exit 1
+          fi
+
+      # An npm *automation* token (secret NPM_TOKEN) bypasses 2FA, which manual
+      # `npm publish` on this account requires. --provenance attests the build.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
