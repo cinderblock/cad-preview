@@ -42,7 +42,7 @@ SolidWorks) have no reliable file magic and are recognized by extension.
 | **Blender** | `.blend` | `TEST` file-block holding a bottom-up RGBA thumbnail. Uncompressed, gzip-, and zstd-compressed (Blender 3.0+) files. |
 | **SketchUp** | `.skp` | Version header immediately followed by the thumbnail as an embedded PNG. |
 | **Autodesk DWF** | `.dwf` | ZIP behind a `(DWF V...` prefix; each ePlot sheet stores a rasterized PNG. |
-| **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. |
+| **3MF / FreeCAD / Fusion 360 / OPC ZIPs** | `.3mf` `.fcstd` `.f3d` | ZIP package with a `thumbnail`/`preview` image part. Includes slicer 3MF projects (e.g. Bambu Studio), whose render is `Metadata/plate_N.png`. |
 
 The OLE compound-document family (legacy SolidWorks, Inventor, Solid Edge, 3ds
 Max, Revit, …) is handled generically: any embedded PNG or Windows DIB

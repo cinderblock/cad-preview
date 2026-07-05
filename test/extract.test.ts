@@ -166,6 +166,31 @@ describe('extractPreview', () => {
     expect(extractPreview(zip, { filename: 'x.3mf' })).toBeNull()
   })
 
+  test('Bambu 3MF with only plate_N.png (no generic thumbnail)', () => {
+    const plate = fakePng(300)
+    const zip = zipSync({
+      '3D/3dmodel.model': new Uint8Array([1, 2, 3]),
+      'Metadata/plate_1.png': plate,
+      'Metadata/top_1.png': fakePng(80), // slicer maps — must NOT be chosen
+      'Metadata/pick_1.png': fakePng(80),
+    })
+    const preview = extractPreview(zip, { filename: 'print.3mf' })
+    expect(preview).not.toBeNull()
+    expect(preview!.source).toBe('zip')
+    expect(preview!.data.length).toBe(plate.length) // the plate render, not a map
+  })
+
+  test('Bambu 3MF prefers the plate render over the small logo thumbnail', () => {
+    const plate = fakePng(512)
+    const zip = zipSync({
+      'Auxiliaries/.thumbnails/thumbnail_3mf.png': fakePng(120),
+      'Metadata/plate_1.png': plate,
+      'Metadata/plate_2.png': fakePng(500),
+    })
+    const preview = extractPreview(zip, { filename: 'multi.3mf' })
+    expect(preview!.data.length).toBe(plate.length) // plate_1, the largest & first
+  })
+
   test('modern SolidWorks part (raw-DEFLATE PNG after stream magic)', () => {
     const png = fakePng(128)
     const buf = fakeModernSw(png)
