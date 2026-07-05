@@ -1,6 +1,6 @@
 {
   "name": "cad-preview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Extract the embedded preview/thumbnail image from CAD and 3D files (SolidWorks, 3MF, FreeCAD, Inventor, …) — pure JS, cross-platform, no native CAD tools required.",
   "keywords": [
     "cad",
